@@ -1,4 +1,4 @@
-use axum::{response::Html, routing::get, Router, extract::Path};
+use axum::{extract::Path, response::Html, routing::get, Router};
 use minijinja::render;
 use serde::Serialize;
 
@@ -14,7 +14,7 @@ struct Profile {
     items: Vec<Items>,
 }
 
-const HOME_TEMPLATE: &'static str = r#"
+const HOME: &'static str = r#"
 <!doctype html>
 
 <html lang="en">
@@ -32,6 +32,7 @@ const HOME_TEMPLATE: &'static str = r#"
 </body>
 </html>
 "#;
+
 const PROFILE_TEMPLATE: &'static str = r#"
 <!doctype html>
 
@@ -65,20 +66,25 @@ async fn main() {
         .route(
             "/",
             get(|| async {
-                let r = render!(HOME_TEMPLATE);
-                Html(r)
+                Html(HOME)
             }),
         )
         .route(
             "/:profile_name",
             get(|Path(profile_name): Path<String>| async {
                 let orders_example = vec![
-                    Items { id: 1, name: "Article banana".into() },
-                    Items { id: 2, name: "Article apple".into() },
+                    Items {
+                        id: 1,
+                        name: "Article banana".into(),
+                    },
+                    Items {
+                        id: 2,
+                        name: "Article apple".into(),
+                    },
                 ];
                 let profile_example = Profile {
                     full_name: profile_name,
-                    items: orders_example
+                    items: orders_example,
                 };
                 let r = render!(PROFILE_TEMPLATE, profile => profile_example );
                 Html(r)
