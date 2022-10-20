@@ -65,30 +65,11 @@ async fn main() {
     let app = Router::new()
         .route(
             "/",
-            get(|| async {
-                Html(HOME)
-            }),
+            get(home),
         )
         .route(
             "/:profile_name",
-            get(|Path(profile_name): Path<String>| async {
-                let orders_example = vec![
-                    Items {
-                        id: 1,
-                        name: "Article banana".into(),
-                    },
-                    Items {
-                        id: 2,
-                        name: "Article apple".into(),
-                    },
-                ];
-                let profile_example = Profile {
-                    full_name: profile_name,
-                    items: orders_example,
-                };
-                let r = render!(PROFILE_TEMPLATE, profile => profile_example );
-                Html(r)
-            }),
+            get(get_profile),
         );
 
     // run it with hyper on localhost:3000
@@ -96,4 +77,27 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn home() -> Html<&'static str> {
+    Html("hello world")
+}
+
+async fn get_profile(Path(profile_name): Path<String>) -> Html<String> {
+    let orders_example = vec![
+        Items {
+            id: 1,
+            name: "Article banana".into(),
+        },
+        Items {
+            id: 2,
+            name: "Article apple".into(),
+        },
+    ];
+    let profile_example = Profile {
+        full_name: profile_name,
+        items: orders_example,
+    };
+    let r = render!(PROFILE_TEMPLATE, profile => profile_example );
+    Html(r)
 }
