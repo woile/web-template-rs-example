@@ -1,6 +1,9 @@
+use axum::extract::State;
 use axum::{extract::Path, response::Html, routing::get, Router};
-use minijinja::render;
+use minijinja::context;
+use minijinja::Environment;
 use serde::Serialize;
+use std::sync::Arc;
 
 #[derive(Debug, Serialize)]
 struct Items {
@@ -14,67 +17,27 @@ struct Profile {
     items: Vec<Items>,
 }
 
-const HOME: &'static str = r#"
-<!doctype html>
-
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>A Basic HTML5 Template</title>
-  <meta name="description" content="A simple HTML5 Template for new projects.">
-  <meta name="author" content="Woile">
-</head>
-
-<body>
-    <h1>Welcome to this example website!</h1>
-</body>
-</html>
-"#;
-
-const PROFILE_TEMPLATE: &'static str = r#"
-<!doctype html>
-
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>A Basic HTML5 Template</title>
-  <meta name="description" content="A simple HTML5 Template for new projects.">
-  <meta name="author" content="Woile">
-</head>
-
-<body>
-    <h1>Profile of {{ profile.full_name|title }}</h1>
-    <p>This is a template example just to show some functionality</p>
-    <h2>Items</h3>
-    <ul>
-        {% for item in profile.items %}
-        <li>{{ item.name }} ({{ item.id }})</li>
-        {% endfor %}
-    <ul>
-</body>
-</html>
-"#;
+#[derive(Debug, Clone)]
+pub struct AppState {
+    pub tpl_env: Environment<'static>,
+}
 
 #[tokio::main]
 async fn main() {
+    let mut env = minijinja::Environment::new();
+
+    minijinja_embed::load_templates!(&mut env);
     // build our application with a single route
     let app = Router::new()
-        .route(
-            "/",
-            get(home),
-        )
-        .route(
-            "/:profile_name",
-            get(get_profile),
-        );
+        .route("/", get(home))
+        .route("/:profile_name", get(get_profile))
+        .with_state(Arc::new(AppState { tpl_env: env }));
 
+    let tcp_listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+        .await
+        .unwrap();
     // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
+    axum::serve(tcp_listener, app.into_make_service())
         .await
         .unwrap();
 }
@@ -83,7 +46,10 @@ async fn home() -> Html<&'static str> {
     Html("hello world")
 }
 
-async fn get_profile(Path(profile_name): Path<String>) -> Html<String> {
+async fn get_profile(
+    Path(profile_name): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Html<String> {
     let orders_example = vec![
         Items {
             id: 1,
@@ -98,6 +64,10 @@ async fn get_profile(Path(profile_name): Path<String>) -> Html<String> {
         full_name: profile_name,
         items: orders_example,
     };
-    let r = render!(PROFILE_TEMPLATE, profile => profile_example );
+
+    let template = state.tpl_env.get_template("profile_template.html").unwrap();
+    let r = template
+        .render(context! {profile => profile_example })
+        .unwrap();
     Html(r)
 }
