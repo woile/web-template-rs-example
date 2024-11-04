@@ -6,7 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.5.16"
-minijinja = {version = "0.23.0", features = ["builtins"]}
+axum = "0.7"
+minijinja = {version = "2", features = ["builtins"]}
+minijinja-embed = "2.3.1"
 serde = {version = "1.0.145", features = ["derive"]}
 tokio = { version = "1.0", features = ["full"] }
+
+[build-dependencies]
+minijinja-embed = "2.3.1"
